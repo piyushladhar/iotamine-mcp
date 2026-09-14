@@ -41,31 +41,71 @@ def register(mcp, client):
 
     # ── Create / destroy ───────────────────────────────────────
     @mcp.tool(annotations=WRITE)
-    def create_vps(hostname: str, pop: int, cores: int, ram: int, disk: int,
-                    operating_system: int, password: str = "", ssh_key: int = None,
+    def create_vps(hostname: str, pop: int, cores: int, ram: int,
+                    disk: int = None, operating_system: int = None,
+                    existing_ip: str = None, existing_boot_volume: str = None,
+                    password: str = "", ssh_key: int = None,
                     disable_pwd_auth: bool = False, confirm: bool = False) -> dict:
-        """Deploy a new VPS. Spends real money (checked against balance
-        and this account's resource quota, both enforced by the real
-        API — this call will fail cleanly with the reason if either is
-        insufficient) — requires confirm=true, and should only be
-        called after explicitly telling the user what will be
-        provisioned and its cost.
+        """Deploy a new VPS. Spends real money — requires confirm=true,
+        and should only be called after explicitly telling the user
+        what will be provisioned and its estimated cost (see "Cost"
+        below — get this right; it's a common mistake to quote only
+        compute and forget the IP).
 
         pop: a Point of Presence id from list_regions.
-        operating_system: an id from list_os_images.
         cores/ram/disk: must match one of the allowed values the real
         API enforces — see get_quota or just try a value; a rejection
         names the allowed set.
+
+        Boot disk — exactly one of these two:
+        - disk + operating_system: provisions a fresh disk (disk in GB)
+          with a fresh OS install (operating_system an id from
+          list_os_images). Both required together.
+        - existing_boot_volume: boots from a standalone volume this
+          account already owns instead (an id from list_volumes, kind
+          "boot", not already attached to anything — check first).
+          disk/operating_system are ignored if this is given; the
+          volume already has its own OS. Costs nothing extra — the
+          volume's own cost, if any, was already paid when it was
+          purchased.
+
+        IP address — one of these two:
+        - Omit existing_ip: a brand-new IP is automatically purchased
+          and assigned as part of deployment. This is NOT free — it's
+          the pop's own ip_price, billed the same as calling
+          purchase_ip separately.
+        - existing_ip: attach a standalone IP this account already owns
+          instead (an id from list_ip_addresses, not already attached
+          to anything — check first). No new IP purchased, no extra
+          cost.
+
         ssh_key: an id from list_ssh_keys, to install onto the new VPS.
+
+        Cost: call list_regions first and use the matching pop's own
+        hourly rates. Total hourly cost = cores * cpu_price + ram *
+        ram_price + (disk * disk_price, only if provisioning a fresh
+        disk — 0 if existing_boot_volume is given) + (ip_price, only if
+        existing_ip is NOT given — 0 if it is). Quote this full total,
+        not just compute, before asking for confirmation.
+
         Provisioning is asynchronous — this call returns immediately
         with the new VPS's id and is_building=true; poll get_vps for it
         to finish."""
         if not confirm:
             raise ToolError("Set confirm=true to deploy this VPS — this spends real money.")
         payload = {
-            "hostname": hostname, "pop": pop, "cores": cores, "ram": ram, "disk": disk,
-            "operating_system": operating_system, "traffic": 5, "disable_pwd_auth": disable_pwd_auth,
+            "hostname": hostname, "pop": pop, "cores": cores, "ram": ram,
+            "traffic": 5, "disable_pwd_auth": disable_pwd_auth,
         }
+        if existing_boot_volume:
+            payload["existing_boot_volume"] = existing_boot_volume
+        else:
+            if disk is None or operating_system is None:
+                raise ToolError("disk and operating_system are both required unless existing_boot_volume is given.")
+            payload["disk"] = disk
+            payload["operating_system"] = operating_system
+        if existing_ip:
+            payload["existing_ip"] = existing_ip
         if password:
             payload["password"] = password
         if ssh_key:

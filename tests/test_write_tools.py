@@ -29,6 +29,44 @@ async def test_create_vps_posts_the_right_payload(mcp_server, fake_client):
 
 
 @pytest.mark.asyncio
+async def test_create_vps_with_an_existing_boot_volume_omits_disk_and_os(mcp_server, fake_client):
+    """A real gap found via a live screenshot: create_vps used to have
+    no way to reuse an owned volume/IP at all, and its cost estimate
+    silently left out the IP a fresh deploy actually purchases."""
+    fake_client.post.return_value = {"id": "new-vps"}
+    await mcp_server.call_tool("create_vps", {
+        "hostname": "box1", "pop": 1, "cores": 2, "ram": 4,
+        "existing_boot_volume": "vol-1", "confirm": True,
+    })
+    fake_client.post.assert_called_once_with("vps/", json={
+        "hostname": "box1", "pop": 1, "cores": 2, "ram": 4,
+        "traffic": 5, "disable_pwd_auth": False, "existing_boot_volume": "vol-1",
+    })
+
+
+@pytest.mark.asyncio
+async def test_create_vps_with_an_existing_ip_includes_it_in_the_payload(mcp_server, fake_client):
+    fake_client.post.return_value = {"id": "new-vps"}
+    await mcp_server.call_tool("create_vps", {
+        "hostname": "box1", "pop": 1, "cores": 2, "ram": 4, "disk": 40,
+        "operating_system": 7, "existing_ip": "ip-1", "confirm": True,
+    })
+    fake_client.post.assert_called_once_with("vps/", json={
+        "hostname": "box1", "pop": 1, "cores": 2, "ram": 4, "disk": 40,
+        "operating_system": 7, "traffic": 5, "disable_pwd_auth": False, "existing_ip": "ip-1",
+    })
+
+
+@pytest.mark.asyncio
+async def test_create_vps_rejects_when_no_disk_source_is_given_at_all(mcp_server, fake_client):
+    with pytest.raises(ToolError, match="disk and operating_system"):
+        await mcp_server.call_tool("create_vps", {
+            "hostname": "box1", "pop": 1, "cores": 2, "ram": 4, "confirm": True,
+        })
+    fake_client.post.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_destroy_vps_sends_delete_with_release_ids(mcp_server, fake_client):
     fake_client.delete.return_value = None
     await mcp_server.call_tool("destroy_vps", {"vps_id": "v1", "confirm": True, "release_ip_ids": [1, 2]})
