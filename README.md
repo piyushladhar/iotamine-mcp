@@ -44,6 +44,10 @@ dependencies once. If you're wiring this into an MCP client (below) and it fails
 the very first time, run the command above directly in a terminal first, let it finish, then
 retry from the client — every run after the first is near-instant.
 
+**Already using an older version?** `uvx` caches its own resolution of "latest" — it won't
+automatically notice a new release. Run `uvx --refresh iotamine-mcp` once in a terminal (or clear
+`~/.cache/uv`) to pick up new tools, then restart your MCP client.
+
 ### 3. Add it to your MCP client
 
 **Claude Code:**
