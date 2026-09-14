@@ -5,6 +5,8 @@ Iotamine API key (core.authentications.APIKeyAuthentication), sent the
 same way any other REST client already sends one.
 """
 import os
+import threading
+from collections import OrderedDict
 
 import httpx
 from mcp.server.mcpserver.exceptions import ToolError
@@ -131,3 +133,92 @@ class IotamineClient:
         if isinstance(data, list):
             return data
         return [] if data is None else [data]
+
+
+_MAX_CACHED_CLIENTS = 512
+"""Bound on ClientPool's size — see ClientPool docstring."""
+
+
+class ClientPool:
+    """Bounded per-token IotamineClient cache for streamable-http's
+    multi-tenant mode: one real client (and its pooled httpx connection)
+    per distinct bearer token, reused across a session's many tool calls
+    instead of rebuilt — and reconnected — on every single one. Unused
+    in stdio mode, which only ever has the one process-wide client.
+
+    Bounded (not a plain dict) so a public server can't be made to grow
+    this forever by cycling through tokens — the oldest-used entry is
+    evicted (and its connection closed) once the cap is hit.
+    """
+
+    def __init__(self, base_url=None, max_size=_MAX_CACHED_CLIENTS):
+        self._base_url = base_url
+        self._max_size = max_size
+        self._lock = threading.Lock()
+        self._by_token = OrderedDict()
+
+    def get(self, token):
+        with self._lock:
+            client = self._by_token.get(token)
+            if client is not None:
+                self._by_token.move_to_end(token)
+                return client
+            client = IotamineClient(api_key=token, base_url=self._base_url)
+            self._by_token[token] = client
+            if len(self._by_token) > self._max_size:
+                _, evicted = self._by_token.popitem(last=False)
+                evicted.close()
+            return client
+
+    def close(self):
+        with self._lock:
+            for client in self._by_token.values():
+                client.close()
+            self._by_token.clear()
+
+
+class ScopedClient:
+    """Drop-in stand-in for a real IotamineClient — build_server() hands
+    this to every tools.*.register() call exactly like a real one, so
+    none of the 78 tool functions closed over it (they all just call
+    client.get(...)/post(...)/etc.) need to know or care which mode the
+    server is running in.
+
+    Every attribute access resolves, at call time, to whichever client
+    is "current" for this request:
+
+    - stdio: always `default` — the single process-wide client built
+      from IOTAMINE_API_KEY at startup. This is the only mode that
+      existed before streamable-http support, and its behavior here is
+      unchanged: get_access_token() is always None outside an HTTP
+      request, so resolve() always falls through to `default`.
+    - streamable-http: the SDK's bearer-auth layer (see auth.py's
+      IotamineTokenVerifier, wired up in server.py) has already
+      verified the caller's token before any tool runs and stashed it
+      in a contextvar; resolve() turns that into (and caches, via
+      `pool`) a real per-token IotamineClient — so two concurrent
+      requests from two different Iotamine accounts each transparently
+      talk to the backend as themselves, never as each other.
+    """
+
+    def __init__(self, default, pool):
+        self._default = default
+        self._pool = pool
+
+    def _resolve(self):
+        from mcp.server.auth.middleware.auth_context import get_access_token
+
+        token = get_access_token()
+        if token is not None:
+            return self._pool.get(token.token)
+        if self._default is not None:
+            return self._default
+        # http mode with no default client configured (build_http_server's
+        # normal case) reaching here means RequireAuthMiddleware let an
+        # unauthenticated request through to a tool call — shouldn't
+        # happen, but fail with a clear message rather than an opaque
+        # AttributeError off of None.
+        raise ToolError("No authenticated Iotamine account for this request — the connection's bearer token is missing or was not verified.")
+
+    def __getattr__(self, name):
+        return getattr(self._resolve(), name)
