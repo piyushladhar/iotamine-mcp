@@ -22,7 +22,14 @@ def register(mcp, client):
     @mcp.tool(annotations=READ_ONLY)
     def list_regions() -> list:
         """List every Point of Presence (region/data-center location)
-        VPS instances can be deployed in."""
+        VPS instances can be deployed in, with each one's own per-unit
+        rates: cpu_price, ram_price, disk_price are hourly. ip_price is
+        the one exception — it's a monthly figure, not hourly; divide
+        by 720 (30 * 24) for an hourly-equivalent rate before adding it
+        to an hourly compute total (see create_vps's own cost
+        explanation). Getting this unit mismatch wrong is a real,
+        previously-shipped mistake — always double-check which field
+        you're reading before quoting a price."""
         return client.get_list("pop/", params={"page_size": 200})
 
     @mcp.tool(annotations=READ_ONLY)

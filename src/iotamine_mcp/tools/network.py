@@ -26,14 +26,23 @@ def register(mcp, client):
     def check_available_ips(pop: int) -> dict:
         """How many standalone IP addresses can be purchased in a given
         region (Point of Presence id from list_regions) right now, and
-        at what price."""
+        at what price. monthly_price is exactly what it says — a
+        recurring monthly charge for as long as the address is held,
+        NOT a one-time purchase fee. To quote an hourly-equivalent rate
+        (to line up with a VPS's own hourly cores/ram/disk cost),
+        divide by 720 (30 * 24) — this is the one field on a PoP that's
+        monthly while cpu_price/ram_price/disk_price are already
+        hourly; don't assume the same unit for all of them."""
         return client.get("ip-addresses/available/", params={"pop": pop})
 
     @mcp.tool(annotations=WRITE)
     def purchase_ip(pop: int, quantity: int, confirm: bool = False) -> list:
         """Purchase one or more new standalone IP addresses in a region
         (Point of Presence id from list_regions). At most 20 at a time.
-        Spends real money (checked against balance and quota) —
+        This is an ONGOING monthly charge, not a one-time fee — see
+        check_available_ips's own monthly_price before quoting a cost,
+        and make that recurring nature clear to the user, not just the
+        number. Spends real money (checked against balance and quota) —
         requires confirm=true. Synchronous — the purchased addresses
         are returned directly, no task to poll."""
         if not confirm:

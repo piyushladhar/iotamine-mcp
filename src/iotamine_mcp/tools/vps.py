@@ -82,11 +82,16 @@ def register(mcp, client):
         ssh_key: an id from list_ssh_keys, to install onto the new VPS.
 
         Cost: call list_regions first and use the matching pop's own
-        hourly rates. Total hourly cost = cores * cpu_price + ram *
-        ram_price + (disk * disk_price, only if provisioning a fresh
-        disk — 0 if existing_boot_volume is given) + (ip_price, only if
-        existing_ip is NOT given — 0 if it is). Quote this full total,
-        not just compute, before asking for confirmation.
+        rates. cpu_price/ram_price/disk_price are hourly; ip_price is a
+        MONTHLY figure — divide by 720 (30 * 24) before adding it to an
+        hourly total, or it'll be off by ~720x (a real mistake this
+        tool's docs used to make). Total hourly cost = cores * cpu_price
+        + ram * ram_price + (disk * disk_price, only if provisioning a
+        fresh disk — 0 if existing_boot_volume is given) + (ip_price /
+        720, only if existing_ip is NOT given — 0 if it is). Quote this
+        full total, not just compute, before asking for confirmation —
+        and say plainly that the IP portion is a recurring monthly
+        charge, not a one-time fee.
 
         Provisioning is asynchronous — this call returns immediately
         with the new VPS's id and is_building=true; poll get_vps for it
@@ -243,8 +248,11 @@ def register(mcp, client):
 
     @mcp.tool(annotations=READ_ONLY)
     def get_vps_pricing(vps_id: str) -> dict:
-        """Current pricing for one VPS's configuration — useful before
-        calling resize_vps to preview cost."""
+        """Current per-unit pricing for this VPS's region — useful
+        before calling resize_vps to preview cost. cpu_price/ram_price/
+        disk_price are hourly; ip_price is a monthly figure (divide by
+        720 for hourly-equivalent) — see list_regions's own note, same
+        fields, same units."""
         return client.get(f"vps/{vps_id}/getpricing/")
 
     @mcp.tool(annotations=READ_ONLY)
@@ -339,8 +347,10 @@ def register(mcp, client):
     @mcp.tool(annotations=WRITE)
     def add_ip_to_vps(vps_id: str, confirm: bool = False) -> dict:
         """Purchase and attach a brand-new IP address directly to this
-        VPS. Spends real money — requires confirm=true. To attach an IP
-        you already own instead, see attach_ip."""
+        VPS. This is an ONGOING monthly charge (see check_available_ips'
+        own monthly_price, and its note on converting to an hourly
+        rate), not a one-time fee — requires confirm=true. To attach an
+        IP you already own instead, see attach_ip."""
         if not confirm:
             raise ToolError("Set confirm=true to add a new IP to this VPS — it spends real money.")
         return client.post(f"vps/{vps_id}/add_ip/")
