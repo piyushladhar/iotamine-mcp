@@ -5,6 +5,8 @@ against both. No tool logic lives in this file — see iotamine_mcp/tools/
 for that."""
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from iotamine_mcp.auth import IotamineTokenVerifier
 from iotamine_mcp.client import ClientPool, DEFAULT_BASE_URL, IotamineClient, ScopedClient
@@ -91,4 +93,13 @@ def build_http_server(base_url=None, resource_server_url=None, issuer_url=None):
     pool = ClientPool(base_url=resolved_base_url)
     client = ScopedClient(default=None, pool=pool)
     _register_all(mcp, client)
+
+    @mcp.custom_route("/healthz", methods=["GET"])
+    async def health_check(request: Request) -> JSONResponse:
+        # custom_route is explicitly exempt from RequireAuthMiddleware
+        # (see its own docstring) — a load balancer / orchestrator
+        # probe has no bearer token, and shouldn't need one just to
+        # check the process is up.
+        return JSONResponse({"status": "ok"})
+
     return mcp, verifier, pool
