@@ -74,14 +74,36 @@ async def test_infra_list_tools_hit_the_right_endpoint(mcp_server, fake_client, 
     assert _texts(result) == [{"id": 1}]
 
 
+READ_ONLY_TOOL_NAMES = {
+    "list_vps", "get_vps", "get_vps_console", "get_vps_stats", "get_vps_bandwidth_history",
+    "get_vps_metrics_history", "get_bandwidth_overview", "get_vps_billing", "get_vps_pricing",
+    "get_vps_smtp_status", "get_vps_build_log", "list_vps_available_os", "list_vps_backups",
+    "get_vps_backup_cost", "list_vps_disks", "list_attachable_ips_for_vps", "list_firewall_rules",
+    "get_quota", "get_account_balance", "list_invoices", "get_usage_billing",
+    "list_os_images", "list_regions", "list_ssh_keys",
+    "list_ip_addresses", "get_ip_address", "check_available_ips", "list_attachable_vps_for_ip",
+    "list_volumes", "get_volume", "list_available_volume_sizes", "get_volume_task_status",
+    "list_attachable_vps_for_volume", "list_available_os_for_volume",
+    "list_activity_logs", "export_data",
+}
+
+
 @pytest.mark.asyncio
-async def test_every_registered_tool_is_marked_read_only(mcp_server):
-    """The whole point of Phase 1 shipping read-only-only: nothing here
-    should ever be annotated otherwise, or a client that trusts
-    readOnlyHint could let a model call it without confirmation."""
+async def test_every_tool_is_annotated_and_the_read_only_set_is_exactly_right(mcp_server):
+    """Nothing here should ever go unannotated (a client can't make a
+    confirm/no-confirm UI decision without an annotation to read), and
+    the read-only set must be exact in both directions: nothing that
+    actually writes is marked readOnlyHint=true (a client could let a
+    model call it with zero confirmation), and nothing read-only is
+    marked otherwise (which would make a client demand confirmation
+    for a plain lookup)."""
     tools = await mcp_server.list_tools()
-    assert len(tools) == 11
+    assert len(tools) == 68
+    by_name = {t.name: t for t in tools}
+    assert set(by_name) >= READ_ONLY_TOOL_NAMES
     for tool in tools:
-        assert tool.annotations is not None
-        assert tool.annotations.read_only_hint is True
-        assert not tool.annotations.destructive_hint
+        assert tool.annotations is not None, tool.name
+        expected_read_only = tool.name in READ_ONLY_TOOL_NAMES
+        assert tool.annotations.read_only_hint is expected_read_only, tool.name
+        if expected_read_only:
+            assert not tool.annotations.destructive_hint, tool.name

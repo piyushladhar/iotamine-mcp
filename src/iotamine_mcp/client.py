@@ -7,6 +7,7 @@ same way any other REST client already sends one.
 import os
 
 import httpx
+from mcp.server.mcpserver.exceptions import ToolError
 
 DEFAULT_BASE_URL = "https://iotamine.com/api/"
 
@@ -17,8 +18,15 @@ class IotamineConfigError(Exception):
     401 one at a time."""
 
 
-class IotamineAPIError(Exception):
-    """Wraps a non-2xx response from the real API. `message` is the
+class IotamineAPIError(ToolError):
+    """Wraps a non-2xx response from the real API. Subclasses ToolError
+    deliberately — anything else (plain Exception) reaches the model as
+    an opaque "Error executing tool <name>" crash with no message at
+    all, confirmed live: every tool in this whole package was doing
+    exactly that for every real API error (401, 403, quota exceeded,
+    VPS not found, ...) until this was caught. ToolError is what makes
+    the SDK return a clean is_error=True result carrying `message`
+    instead. `message` is the
     backend's own {"message": ...} (or {"error": ...}) body when it sent
     one — always shown to the model as-is rather than a generic
     "something went wrong", since it's already written to be a clear,
@@ -78,11 +86,37 @@ class IotamineClient:
             return None
         return response.json()
 
+    def _raw_request(self, method, path, *, params=None):
+        """Like _request, but for the handful of endpoints that don't
+        return JSON at all (UserDataExportView's CSV/zip). Returns
+        (content_type, response) instead of a parsed body — same error
+        handling (401/403/other) as _request, just no .json() call."""
+        try:
+            response = self._client.request(method, path.lstrip("/"), params=params)
+        except httpx.RequestError as exc:
+            raise IotamineAPIError(None, f"Could not reach the Iotamine API: {exc}") from exc
+        if response.status_code == 401:
+            raise IotamineAPIError(401, "This API key is invalid, inactive, or IP-restricted. Check it on your Iotamine dashboard's API Keys page.")
+        if response.status_code == 403:
+            raise IotamineAPIError(403, _extract_message(response) or "This API key doesn't have permission for this action — it may be read-only (see APIKey.scope on your dashboard).")
+        if not response.is_success:
+            raise IotamineAPIError(response.status_code, _extract_message(response))
+        return response.headers.get("content-type", ""), response
+
     def get(self, path, params=None):
         return self._request("GET", path, params=params)
 
     def post(self, path, json=None):
         return self._request("POST", path, json=json)
+
+    def patch(self, path, json=None):
+        return self._request("PATCH", path, json=json)
+
+    def put(self, path, json=None):
+        return self._request("PUT", path, json=json)
+
+    def delete(self, path, json=None):
+        return self._request("DELETE", path, json=json)
 
     def get_list(self, path, params=None):
         """Normalizes the two list shapes the real API actually returns
