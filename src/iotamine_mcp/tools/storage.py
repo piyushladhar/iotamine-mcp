@@ -121,7 +121,9 @@ def register(mcp, client):
 
     @mcp.tool(annotations=WRITE)
     def set_volume_as_boot(volume_id: str, vps_id: str, confirm: bool = False) -> dict:
-        """Set this volume as a VPS's boot disk. Requires confirm=true."""
+        """Set this volume as a VPS's boot disk. The VPS must already be
+        stopped — the same requirement vps.py's change_vps_hostname
+        documents (stop it first with stop_vps). Requires confirm=true."""
         if not confirm:
             raise ToolError("Set confirm=true to set this volume as a boot disk.")
         return client.post(f"volumes/{volume_id}/set_as_boot/", json={"vps": vps_id})

@@ -119,10 +119,11 @@ def register(mcp, client):
     @mcp.tool(annotations=DESTRUCTIVE)
     def reinstall_vps(vps_id: str, os_id: int, new_pass: str, confirm: bool = False) -> dict:
         """Wipes the VPS's boot disk and reinstalls a fresh OS onto it —
-        irreversible, everything currently on the disk is lost.
-        Requires confirm=true. os_id: an id from list_vps_available_os
-        for this specific VPS (not every OS is available on every
-        node)."""
+        irreversible, everything currently on the disk is lost. The VPS
+        must already be stopped, same reason as change_vps_hostname
+        (stop it first with stop_vps). Requires confirm=true. os_id: an
+        id from list_vps_available_os for this specific VPS (not every
+        OS is available on every node)."""
         if not confirm:
             raise ToolError("Set confirm=true to reinstall this VPS — all data on its boot disk will be lost.")
         return client.post(f"vps/{vps_id}/rebuild/", json={"osid": os_id, "new_pass": new_pass, "conf_pass": new_pass})
