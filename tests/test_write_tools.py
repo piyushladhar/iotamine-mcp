@@ -235,3 +235,65 @@ async def test_export_data_refuses_the_zip_shaped_invoices_category(mcp_server, 
     fake_client._raw_request.return_value = ("application/zip", httpx.Response(200, content=b"PK\x03\x04"))
     with pytest.raises(ToolError, match="zip archive"):
         await mcp_server.call_tool("export_data", {"category": "invoices"})
+
+
+# ── Support tickets ───────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_create_ticket_creates_then_posts_the_opening_message(mcp_server, fake_client):
+    """The real API's own create() never turns a customer's opening
+    message into the first reply — confirmed by reading
+    pages/tickets/create.vue directly, which does the identical two
+    calls. create_ticket mirrors that so it behaves as one logical
+    action from the caller's side."""
+    fake_client.post.side_effect = [
+        {"id": 42, "subject": "Help", "status": "open"},
+        {"id": 1, "message": "It's broken"},
+    ]
+    fake_client.get.return_value = {"id": 42, "subject": "Help", "replies": [{"message": "It's broken"}]}
+    result = await mcp_server.call_tool("create_ticket", {
+        "subject": "Help", "message": "It's broken", "department_id": 3,
+    })
+    assert fake_client.post.call_args_list[0].args == ("tickets/",)
+    assert fake_client.post.call_args_list[0].kwargs == {"json": {"subject": "Help", "priority": "medium", "department_id": 3}}
+    assert fake_client.post.call_args_list[1].args == ("tickets/42/replies/",)
+    assert fake_client.post.call_args_list[1].kwargs == {"json": {"ticket": 42, "message": "It's broken"}}
+    fake_client.get.assert_called_once_with("tickets/42/")
+    assert _texts(result) == [{"id": 42, "subject": "Help", "replies": [{"message": "It's broken"}]}]
+
+
+@pytest.mark.asyncio
+async def test_create_ticket_rejects_an_invalid_priority(mcp_server, fake_client):
+    with pytest.raises(ToolError, match="low, medium, high"):
+        await mcp_server.call_tool("create_ticket", {"subject": "x", "message": "y", "department_id": 1, "priority": "urgent"})
+    fake_client.post.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_reply_to_ticket_posts_to_the_nested_route(mcp_server, fake_client):
+    fake_client.post.return_value = {"id": 2, "message": "thanks"}
+    await mcp_server.call_tool("reply_to_ticket", {"ticket_id": "42", "message": "thanks"})
+    fake_client.post.assert_called_once_with("tickets/42/replies/", json={"ticket": "42", "message": "thanks"})
+
+
+# ── Transactions / usage line items / maintenance ───────────────────────
+
+@pytest.mark.asyncio
+async def test_get_usage_billing_line_items_defaults_to_unbilled(mcp_server, fake_client):
+    fake_client.get_list.return_value = [{"id": 1}]
+    await mcp_server.call_tool("get_usage_billing_line_items", {})
+    fake_client.get_list.assert_called_once_with("usage-billing/line-items/", params={"status": "unbilled"})
+
+
+@pytest.mark.asyncio
+async def test_list_transactions_hits_the_right_endpoint(mcp_server, fake_client):
+    fake_client.get_list.return_value = [{"id": "t1"}]
+    await mcp_server.call_tool("list_transactions", {})
+    fake_client.get_list.assert_called_once_with("transactions/", params={"page_size": 100})
+
+
+@pytest.mark.asyncio
+async def test_list_maintenance_events_hits_the_right_endpoint(mcp_server, fake_client):
+    fake_client.get_list.return_value = []
+    await mcp_server.call_tool("list_maintenance_events", {})
+    fake_client.get_list.assert_called_once_with("maintenance-events/", params={"page_size": 50})

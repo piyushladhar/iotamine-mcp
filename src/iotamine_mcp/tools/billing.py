@@ -32,3 +32,22 @@ def register(mcp, client):
         already-billed cost broken down by Compute/Storage/Network/Other
         — the same data the dashboard's own Usage Billing page shows."""
         return client.get("usage-billing/overview/")
+
+    @mcp.tool(annotations=READ_ONLY)
+    def get_usage_billing_line_items(status: str = "unbilled") -> list:
+        """Row-by-row usage detail backing get_usage_billing's own
+        summary — one row per VPS/volume/IP/bandwidth charge. status is
+        "unbilled" (default, a live snapshot) or "billed" (everything
+        already charged)."""
+        return client.get_list("usage-billing/line-items/", params={"status": status})
+
+    @mcp.tool(annotations=READ_ONLY)
+    def list_transactions() -> list:
+        """List every transaction on this account's wallet (bonus
+        credits, top-ups, adjustments), most recent first."""
+        return client.get_list("transactions/", params={"page_size": 100})
+
+    @mcp.tool(annotations=READ_ONLY)
+    def get_transaction(transaction_id: str) -> dict:
+        """Get full detail for one transaction by its id."""
+        return client.get(f"transactions/{transaction_id}/")

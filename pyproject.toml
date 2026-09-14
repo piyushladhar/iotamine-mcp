@@ -1,6 +1,6 @@
 [project]
 name = "iotamine-mcp"
-version = "0.2.2"
+version = "0.3.0"
 description = "MCP server for the Iotamine cloud VPS platform — manage VPS instances, billing, and infrastructure from any MCP-compatible client (Claude Desktop, Claude Code, Cursor, ...)."
 readme = "README.md"
 requires-python = ">=3.10"

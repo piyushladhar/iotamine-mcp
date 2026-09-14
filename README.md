@@ -93,8 +93,10 @@ and its cost (if any) before it sets `confirm: true`.
 
 ## Tools
 
-68 tools in total. Read-only ones work with either key scope; everything else needs a
-`read_write`-scoped key.
+78 tools in total. Read-only ones work with either key scope; everything else needs a
+`read_write`-scoped key (still true for `create_ticket`/`reply_to_ticket` — any write needs that
+scope, full stop). The one difference: those two don't require `confirm=true` the way spend/
+destroy tools do — opening a ticket or replying to one doesn't cost anything or destroy anything.
 
 **VPS — lifecycle**
 `list_vps`, `get_vps`, `create_vps`, `destroy_vps`, `start_vps`, `stop_vps`, `poweroff_vps`,
@@ -128,13 +130,21 @@ and its cost (if any) before it sets `confirm: true`.
 `list_ssh_keys`, `create_ssh_key`, `delete_ssh_key`
 
 **Billing & account**
-`get_quota`, `get_account_balance`, `list_invoices`, `get_usage_billing`
+`get_quota`, `get_account_balance`, `list_invoices`, `get_usage_billing`,
+`get_usage_billing_line_items`, `list_transactions`, `get_transaction`
 
 **Catalogs**
 `list_os_images`, `list_regions`
 
 **Activity & data export**
 `list_activity_logs`, `export_data`
+
+**Support tickets**
+`list_ticket_departments`, `list_tickets`, `get_ticket`, `create_ticket`, `list_ticket_replies`,
+`reply_to_ticket`
+
+**Maintenance**
+`list_maintenance_events`
 
 ## Configuration
 
