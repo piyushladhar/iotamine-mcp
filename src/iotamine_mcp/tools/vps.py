@@ -242,6 +242,29 @@ def register(mcp, client):
         return client.get("vps/bandwidth_overview/")
 
     @mcp.tool(annotations=READ_ONLY)
+    def get_bandwidth_overview_daily(start: str = None, end: str = None, vps_id: str = None) -> dict:
+        """Day-by-day bandwidth (rx/tx GB) over a date range — the
+        Bandwidth Usage page's own chart, and the way to actually answer
+        "which VPS used the most bandwidth [last week/month]" rather
+        than get_bandwidth_overview's current-snapshot total. start/end
+        are YYYY-MM-DD (default: the 1st of this month through today;
+        range capped at 366 days). vps_id (optional, an id from
+        list_vps) narrows to one VPS; omitted, every VPS this account
+        owns is summed into a daily fleet total (returned in "daily")
+        plus each VPS's own period total for ranking (returned in
+        "per_vps", sorted highest-usage first) — not a full per-VPS
+        daily series for every VPS at once, so pass vps_id if that level
+        of detail is actually needed for one specific VPS."""
+        params = {}
+        if start:
+            params["start"] = start
+        if end:
+            params["end"] = end
+        if vps_id:
+            params["vps_id"] = vps_id
+        return client.get("vps/bandwidth_overview_daily/", params=params)
+
+    @mcp.tool(annotations=READ_ONLY)
     def get_vps_billing(vps_id: str) -> dict:
         """Billing breakdown for one specific VPS."""
         return client.get(f"vps/{vps_id}/billing/")

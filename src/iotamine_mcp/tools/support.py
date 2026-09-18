@@ -65,5 +65,30 @@ def register(mcp, client):
 
     @mcp.tool(annotations=WRITE)
     def reply_to_ticket(ticket_id: str, message: str) -> dict:
-        """Post a reply on an existing ticket."""
+        """Post a reply on an existing ticket. If the ticket is
+        currently closed, this reopens it automatically (the real API's
+        own TicketReplySerializer.create sets status to answered/reply
+        on any new non-private reply, regardless of the ticket's
+        previous status) — there's no need to call reopen_ticket first."""
         return client.post(f"tickets/{ticket_id}/replies/", json={"ticket": ticket_id, "message": message})
+
+    @mcp.tool(annotations=WRITE)
+    def close_ticket(ticket_id: str) -> dict:
+        """Mark a ticket resolved. Either side can close a ticket — the
+        customer (their issue is fixed, no need to wait on staff) or
+        staff — there's no separate permission beyond being able to see
+        the ticket at all. Fails with a 400 if it's already closed. Not
+        a dead end: reply_to_ticket on a closed ticket reopens it
+        automatically, and reopen_ticket undoes this directly — nothing
+        here is destructive or costs anything, so no confirm=true
+        needed, same as create_ticket/reply_to_ticket."""
+        return client.post(f"tickets/{ticket_id}/close/")
+
+    @mcp.tool(annotations=WRITE)
+    def reopen_ticket(ticket_id: str) -> dict:
+        """Reopen a closed ticket — sets status back to "open"
+        specifically (not a guessed answered/reply; who was actually
+        waiting on whom isn't recoverable once a ticket's been sitting
+        closed). Fails with a 400 if it isn't currently closed. Same
+        non-destructive, no-confirm-needed reasoning as close_ticket."""
+        return client.post(f"tickets/{ticket_id}/reopen/")

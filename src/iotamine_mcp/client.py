@@ -180,7 +180,7 @@ class ClientPool:
 class ScopedClient:
     """Drop-in stand-in for a real IotamineClient — build_server() hands
     this to every tools.*.register() call exactly like a real one, so
-    none of the 78 tool functions closed over it (they all just call
+    none of the tool functions closed over it (they all just call
     client.get(...)/post(...)/etc.) need to know or care which mode the
     server is running in.
 

@@ -93,10 +93,12 @@ and its cost (if any) before it sets `confirm: true`.
 
 ## Tools
 
-78 tools in total. Read-only ones work with either key scope; everything else needs a
-`read_write`-scoped key (still true for `create_ticket`/`reply_to_ticket` — any write needs that
-scope, full stop). The one difference: those two don't require `confirm=true` the way spend/
-destroy tools do — opening a ticket or replying to one doesn't cost anything or destroy anything.
+83 tools in total. Read-only ones work with either key scope; everything else needs a
+`read_write`-scoped key (still true for `create_ticket`/`reply_to_ticket`/`close_ticket`/
+`reopen_ticket` — any write needs that scope, full stop). The one difference: those four don't
+require `confirm=true` the way spend/destroy tools do — nothing about a ticket's lifecycle costs
+anything or destroys anything (closing one isn't even final — replying to it, or calling
+`reopen_ticket`, reopens it).
 
 **VPS — lifecycle**
 `list_vps`, `get_vps`, `create_vps`, `destroy_vps`, `start_vps`, `stop_vps`, `poweroff_vps`,
@@ -104,8 +106,8 @@ destroy tools do — opening a ticket or replying to one doesn't cost anything o
 
 **VPS — monitoring & management**
 `get_vps_console`, `get_vps_stats`, `get_vps_bandwidth_history`, `get_vps_metrics_history`,
-`get_bandwidth_overview`, `get_vps_billing`, `get_vps_pricing`, `get_vps_smtp_status`,
-`get_vps_build_log`, `list_vps_available_os`
+`get_bandwidth_overview`, `get_bandwidth_overview_daily`, `get_vps_billing`, `get_vps_pricing`,
+`get_vps_smtp_status`, `get_vps_build_log`, `list_vps_available_os`
 
 **VPS — backups**
 `list_vps_backups`, `get_vps_backup_cost`, `create_vps_backup`, `delete_vps_backup`,
@@ -130,8 +132,9 @@ destroy tools do — opening a ticket or replying to one doesn't cost anything o
 `list_ssh_keys`, `create_ssh_key`, `delete_ssh_key`
 
 **Billing & account**
-`get_quota`, `get_account_balance`, `list_invoices`, `get_usage_billing`,
-`get_usage_billing_line_items`, `list_transactions`, `get_transaction`
+`get_quota`, `get_account_balance`, `list_invoices`, `get_invoice_summary`,
+`pay_invoice_from_credit`, `get_usage_billing`, `get_usage_billing_line_items`,
+`list_transactions`, `get_transaction`
 
 **Catalogs**
 `list_os_images`, `list_regions`
@@ -141,7 +144,7 @@ destroy tools do — opening a ticket or replying to one doesn't cost anything o
 
 **Support tickets**
 `list_ticket_departments`, `list_tickets`, `get_ticket`, `create_ticket`, `list_ticket_replies`,
-`reply_to_ticket`
+`reply_to_ticket`, `close_ticket`, `reopen_ticket`
 
 **Maintenance**
 `list_maintenance_events`

@@ -276,6 +276,22 @@ async def test_reply_to_ticket_posts_to_the_nested_route(mcp_server, fake_client
     fake_client.post.assert_called_once_with("tickets/42/replies/", json={"ticket": "42", "message": "thanks"})
 
 
+@pytest.mark.asyncio
+async def test_close_ticket_posts_to_the_close_route(mcp_server, fake_client):
+    fake_client.post.return_value = {"id": 42, "status": "closed"}
+    result = await mcp_server.call_tool("close_ticket", {"ticket_id": "42"})
+    fake_client.post.assert_called_once_with("tickets/42/close/")
+    assert _texts(result) == [{"id": 42, "status": "closed"}]
+
+
+@pytest.mark.asyncio
+async def test_reopen_ticket_posts_to_the_reopen_route(mcp_server, fake_client):
+    fake_client.post.return_value = {"id": 42, "status": "open"}
+    result = await mcp_server.call_tool("reopen_ticket", {"ticket_id": "42"})
+    fake_client.post.assert_called_once_with("tickets/42/reopen/")
+    assert _texts(result) == [{"id": 42, "status": "open"}]
+
+
 # ── Transactions / usage line items / maintenance ───────────────────────
 
 @pytest.mark.asyncio
@@ -297,3 +313,35 @@ async def test_list_maintenance_events_hits_the_right_endpoint(mcp_server, fake_
     fake_client.get_list.return_value = []
     await mcp_server.call_tool("list_maintenance_events", {})
     fake_client.get_list.assert_called_once_with("maintenance-events/", params={"page_size": 50})
+
+
+@pytest.mark.asyncio
+async def test_get_invoice_summary_hits_the_right_endpoint(mcp_server, fake_client):
+    fake_client.get.return_value = {"by_currency": [{"short_name": "USD", "paid_amount": 10.0}]}
+    result = await mcp_server.call_tool("get_invoice_summary", {})
+    fake_client.get.assert_called_once_with("invoices/summary/")
+    assert _texts(result) == [{"by_currency": [{"short_name": "USD", "paid_amount": 10.0}]}]
+
+
+@pytest.mark.asyncio
+async def test_pay_invoice_from_credit_posts_the_credit_gateway(mcp_server, fake_client):
+    fake_client.post.return_value = {"message": "Invoice has been paid."}
+    await mcp_server.call_tool("pay_invoice_from_credit", {"invoice_id": "42", "confirm": True})
+    fake_client.post.assert_called_once_with("invoices/42/pay/", json={"gateway": "credit"})
+
+
+@pytest.mark.asyncio
+async def test_get_bandwidth_overview_daily_omits_unset_params(mcp_server, fake_client):
+    fake_client.get.return_value = {"daily": [], "per_vps": []}
+    await mcp_server.call_tool("get_bandwidth_overview_daily", {})
+    fake_client.get.assert_called_once_with("vps/bandwidth_overview_daily/", params={})
+
+
+@pytest.mark.asyncio
+async def test_get_bandwidth_overview_daily_passes_all_params_when_given(mcp_server, fake_client):
+    fake_client.get.return_value = {"daily": [], "per_vps": []}
+    await mcp_server.call_tool("get_bandwidth_overview_daily", {"start": "2026-09-01", "end": "2026-09-17", "vps_id": "v1"})
+    fake_client.get.assert_called_once_with(
+        "vps/bandwidth_overview_daily/",
+        params={"start": "2026-09-01", "end": "2026-09-17", "vps_id": "v1"},
+    )
