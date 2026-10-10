@@ -88,6 +88,7 @@ READ_ONLY_TOOL_NAMES = {
     "get_usage_billing_line_items", "list_transactions", "get_transaction",
     "list_maintenance_events", "get_bandwidth_overview_daily",
     "list_ticket_departments", "list_tickets", "get_ticket", "list_ticket_replies",
+    "get_command_result", "list_commands", "read_file",
 }
 
 
@@ -101,7 +102,7 @@ async def test_every_tool_is_annotated_and_the_read_only_set_is_exactly_right(mc
     marked otherwise (which would make a client demand confirmation
     for a plain lookup)."""
     tools = await mcp_server.list_tools()
-    assert len(tools) == 83
+    assert len(tools) == 89
     by_name = {t.name: t for t in tools}
     assert set(by_name) >= READ_ONLY_TOOL_NAMES
     for tool in tools:

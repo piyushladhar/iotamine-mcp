@@ -23,6 +23,8 @@ Choose a **scope**:
 - **Read & write** — can also do everything the read-only scope can, plus create/destroy/modify
   things. Required for any of the write tools below; a read-only key gets a clean, clear rejection
   if a write tool is called with it.
+- **Read, write & run commands** — read & write, plus the command tools below (`run_command`,
+  `read_file`, `write_file`, ...). Only give a key this when it needs to work inside a server.
 
 ### 2. Install and run
 
@@ -91,9 +93,29 @@ model has to be told (by you, or by its own judgment reading the tool's descript
 it's about to do before it can actually do it. Always expect your assistant to explain the action
 and its cost (if any) before it sets `confirm: true`.
 
+## Running commands inside a server
+
+`run_command`, `get_command_result`, `cancel_command`, `list_commands`, `read_file` and
+`write_file` let an assistant work inside a VPS — install packages, edit configs, restart
+services, read logs — without SSH. Commands run as root through the server's qemu-guest-agent
+(installed on Iotamine images), with output and an exit code; a long command keeps running even
+if the tool call returns first, and `get_command_result` follows it.
+
+Two switches, both on the dashboard, and both are needed:
+
+1. **Command access for that server** — open the server → **Commands** → *Allow commands*. Off by
+   default; only the owner can turn it on, never through an API key, and turning it on emails you.
+2. **A key with "Read, write & run commands" access** (or, when connecting an app like Claude, that
+   access level on the authorization screen).
+
+Every command is listed on the server's Commands tab with who ran it (dashboard, API key, or AI
+app). `run_command` and `write_file` are marked destructive, so MCP clients ask before each call.
+Linux servers only for now. Limits: 30 commands a minute per account, up to 3 running at once per
+server, commands up to 64 KB, files up to 1 MB, timeout up to 1 hour.
+
 ## Tools
 
-83 tools in total. Read-only ones work with either key scope; everything else needs a
+89 tools in total. Read-only ones work with either key scope; everything else needs a
 `read_write`-scoped key (still true for `create_ticket`/`reply_to_ticket`/`close_ticket`/
 `reopen_ticket` — any write needs that scope, full stop). The one difference: those four don't
 require `confirm=true` the way spend/destroy tools do — nothing about a ticket's lifecycle costs
@@ -148,6 +170,10 @@ anything or destroys anything (closing one isn't even final — replying to it, 
 
 **Maintenance**
 `list_maintenance_events`
+
+**Commands & files inside a server** (need a "Read, write & run commands" key and command access
+switched on for that server)
+`run_command`, `get_command_result`, `cancel_command`, `list_commands`, `read_file`, `write_file`
 
 ## Configuration
 

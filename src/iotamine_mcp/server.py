@@ -10,7 +10,7 @@ from starlette.responses import JSONResponse
 
 from iotamine_mcp.auth import IotamineTokenVerifier
 from iotamine_mcp.client import ClientPool, DEFAULT_BASE_URL, IotamineClient, ScopedClient
-from iotamine_mcp.tools import activity, billing, export, infra, maintenance, network, storage, support, vps
+from iotamine_mcp.tools import activity, billing, commands, export, infra, maintenance, network, storage, support, vps
 
 INSTRUCTIONS = (
     "Tools for managing your Iotamine cloud VPS account — the same actions available on "
@@ -22,12 +22,20 @@ INSTRUCTIONS = (
     "destructive, or otherwise changes account state requires an explicit confirm=true "
     "argument — always tell the user exactly what will happen (and its cost, if any) "
     "before setting it. Data comes directly from the same API https://iotamine.com's own "
-    "dashboard uses."
+    "dashboard uses. To work inside a server (install software, edit configs, check services, read "
+    "logs) use run_command, read_file and write_file rather than SSH: they run as root through the "
+    "server's guest agent, return output and an exit code, and keep going if the call returns before "
+    "a long command finishes (follow it with get_command_result). They need command access switched "
+    "on for that server and a key with 'Read, write & run commands' access, both set on the dashboard; "
+    "if either is missing, stop and give the user the step-by-step fix from the error message "
+    "(server → Commands tab → Allow commands; or reconnect the app with 'Read, write & run "
+    "commands' access) rather than trying another way in, and offer to retry once they've done it."
 )
 
 
 def _register_all(mcp, client):
     vps.register(mcp, client)
+    commands.register(mcp, client)
     billing.register(mcp, client)
     infra.register(mcp, client)
     network.register(mcp, client)

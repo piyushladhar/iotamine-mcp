@@ -24,7 +24,7 @@ async def test_create_vps_posts_the_right_payload(mcp_server, fake_client):
     })
     fake_client.post.assert_called_once_with("vps/", json={
         "hostname": "box1", "pop": 1, "cores": 2, "ram": 4, "disk": 40,
-        "operating_system": 7, "traffic": 5, "disable_pwd_auth": False,
+        "operating_system": 7, "disable_pwd_auth": False,
     })
 
 
@@ -40,7 +40,7 @@ async def test_create_vps_with_an_existing_boot_volume_omits_disk_and_os(mcp_ser
     })
     fake_client.post.assert_called_once_with("vps/", json={
         "hostname": "box1", "pop": 1, "cores": 2, "ram": 4,
-        "traffic": 5, "disable_pwd_auth": False, "existing_boot_volume": "vol-1",
+        "disable_pwd_auth": False, "existing_boot_volume": "vol-1",
     })
 
 
@@ -53,7 +53,7 @@ async def test_create_vps_with_an_existing_ip_includes_it_in_the_payload(mcp_ser
     })
     fake_client.post.assert_called_once_with("vps/", json={
         "hostname": "box1", "pop": 1, "cores": 2, "ram": 4, "disk": 40,
-        "operating_system": 7, "traffic": 5, "disable_pwd_auth": False, "existing_ip": "ip-1",
+        "operating_system": 7, "disable_pwd_auth": False, "existing_ip": "ip-1",
     })
 
 

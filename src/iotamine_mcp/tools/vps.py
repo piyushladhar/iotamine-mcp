@@ -93,6 +93,12 @@ def register(mcp, client):
         and say plainly that the IP portion is a recurring monthly
         charge, not a one-time fee.
 
+        Bandwidth: every server includes 4 TB a month per vCPU (at least
+        5 TB, at most 50 TB — e.g. 2 vCPU = 8 TB, 8 vCPU = 32 TB); it's set
+        from cores automatically. Traffic past that is billed per TB at
+        the pop's traffic_price on the monthly invoice. Mention it when
+        quoting a server.
+
         Provisioning is asynchronous — this call returns immediately
         with the new VPS's id and is_building=true; poll get_vps for it
         to finish."""
@@ -100,7 +106,7 @@ def register(mcp, client):
             raise ToolError("Set confirm=true to deploy this VPS — this spends real money.")
         payload = {
             "hostname": hostname, "pop": pop, "cores": cores, "ram": ram,
-            "traffic": 5, "disable_pwd_auth": disable_pwd_auth,
+            "disable_pwd_auth": disable_pwd_auth,
         }
         if existing_boot_volume:
             payload["existing_boot_volume"] = existing_boot_volume
