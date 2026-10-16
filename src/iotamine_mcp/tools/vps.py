@@ -363,7 +363,7 @@ def register(mcp, client):
         requires confirm=true."""
         if not confirm:
             raise ToolError("Set confirm=true to remove this disk — this is irreversible.")
-        client.delete(f"vps/{vps_id}/delete_disk/{disk_uuid}")
+        client.delete(f"vps/{vps_id}/delete_disk/{disk_uuid}/")
         return {"status": "removed", "disk_uuid": disk_uuid}
 
     @mcp.tool(annotations=READ_ONLY)
@@ -391,7 +391,7 @@ def register(mcp, client):
         releasing it, see detach_ip instead."""
         if not confirm:
             raise ToolError("Set confirm=true to remove this IP — this releases it entirely.")
-        client.delete(f"vps/{vps_id}/delete_ip/{ip_addr}")
+        client.delete(f"vps/{vps_id}/delete_ip/{ip_addr}/")
         return {"status": "removed", "ip": ip_addr}
 
     @mcp.tool(annotations=WRITE)
