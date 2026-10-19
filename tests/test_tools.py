@@ -75,7 +75,9 @@ async def test_infra_list_tools_hit_the_right_endpoint(mcp_server, fake_client, 
 
 
 READ_ONLY_TOOL_NAMES = {
-    "list_vps", "get_vps", "get_vps_console", "get_vps_stats", "get_vps_bandwidth_history",
+    # Not get_vps_console: it issues a root console credential and needs a
+    # full-scope key (audit, 2026-10-17) — see test_get_vps_console_*.
+    "list_vps", "get_vps", "get_vps_stats", "get_vps_bandwidth_history",
     "get_vps_metrics_history", "get_bandwidth_overview", "get_vps_billing", "get_vps_pricing",
     "get_vps_smtp_status", "get_vps_build_log", "list_vps_available_os", "list_vps_backups",
     "get_vps_backup_cost", "list_vps_disks", "list_attachable_ips_for_vps", "list_firewall_rules",

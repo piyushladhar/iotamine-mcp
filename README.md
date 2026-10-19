@@ -22,9 +22,12 @@ Choose a **scope**:
   script you didn't write yourself.
 - **Read & write** — can also do everything the read-only scope can, plus create/destroy/modify
   things. Required for any of the write tools below; a read-only key gets a clean, clear rejection
-  if a write tool is called with it.
+  if a write tool is called with it. It can reinstall a server, swap its boot volume or move its
+  volumes to another server, so treat it as able to get root on your servers and their data.
 - **Read, write & run commands** — read & write, plus the command tools below (`run_command`,
-  `read_file`, `write_file`, ...). Only give a key this when it needs to work inside a server.
+  `read_file`, `write_file`, ...), the console (`get_vps_console`) and setting the root password
+  (`change_vps_root_password`) on an existing server. Only give a key this when it needs to work
+  inside a server.
 
 ### 2. Install and run
 
@@ -120,7 +123,8 @@ server, commands up to 64 KB, files up to 1 MB, timeout up to 1 hour.
 `reopen_ticket` — any write needs that scope, full stop). The one difference: those four don't
 require `confirm=true` the way spend/destroy tools do — nothing about a ticket's lifecycle costs
 anything or destroys anything (closing one isn't even final — replying to it, or calling
-`reopen_ticket`, reopens it).
+`reopen_ticket`, reopens it). `get_vps_console` and `change_vps_root_password` need a "Read,
+write & run commands" key; `get_vps_console` is marked destructive, so MCP clients ask first.
 
 **VPS — lifecycle**
 `list_vps`, `get_vps`, `create_vps`, `destroy_vps`, `start_vps`, `stop_vps`, `poweroff_vps`,

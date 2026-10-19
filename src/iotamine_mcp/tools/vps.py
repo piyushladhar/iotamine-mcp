@@ -21,6 +21,9 @@ READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_worl
 POWER_ACTION = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False)
 DESTRUCTIVE = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False)
 WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False)
+# A console session is a root login, like running a command — destructive,
+# so MCP clients ask the user first (same as commands.RUNS_ON_SERVER).
+CONSOLE = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False)
 
 
 def register(mcp, client):
@@ -142,29 +145,31 @@ def register(mcp, client):
         return {"status": "destroyed", "vps_id": vps_id}
 
     # ── Power ──────────────────────────────────────────────────
+    # POST: the API refuses these with GET for API keys since 2026-10-17
+    # (they change state; audit A6). Needs a read & write key.
     @mcp.tool(annotations=POWER_ACTION)
     def start_vps(vps_id: str) -> dict:
         """Start a stopped VPS."""
-        return client.get(f"vps/{vps_id}/start/")
+        return client.post(f"vps/{vps_id}/start/")
 
     @mcp.tool(annotations=POWER_ACTION)
     def stop_vps(vps_id: str) -> dict:
         """Gracefully stop (ACPI shutdown) a running VPS — gives the
         guest OS a chance to shut down cleanly. Use poweroff_vps for a
         hard power-off instead."""
-        return client.get(f"vps/{vps_id}/stop/")
+        return client.post(f"vps/{vps_id}/stop/")
 
     @mcp.tool(annotations=POWER_ACTION)
     def poweroff_vps(vps_id: str) -> dict:
         """Hard power-off a VPS — equivalent to pulling the plug, no
         chance for the guest OS to shut down cleanly. Use stop_vps for a
         graceful shutdown instead."""
-        return client.get(f"vps/{vps_id}/poweroff/")
+        return client.post(f"vps/{vps_id}/poweroff/")
 
     @mcp.tool(annotations=POWER_ACTION)
     def restart_vps(vps_id: str) -> dict:
         """Restart a running VPS."""
-        return client.get(f"vps/{vps_id}/restart/")
+        return client.post(f"vps/{vps_id}/restart/")
 
     # ── Reinstall / resize / hostname / password ──────────────
     @mcp.tool(annotations=DESTRUCTIVE)
@@ -211,18 +216,26 @@ def register(mcp, client):
     def change_vps_root_password(vps_id: str, new_password: str, confirm: bool = False) -> dict:
         """Change a VPS's root/administrator password. The VPS must
         already be stopped, same reason as change_vps_hostname. Requires
-        confirm=true."""
+        confirm=true, and an API key (or connected app) with "Read,
+        write & run commands" access — setting root's password is a root
+        login, so a read & write key is refused."""
         if not confirm:
             raise ToolError("Set confirm=true to change this VPS's root password.")
         return client.patch(f"vps/{vps_id}/", json={"password": new_password})
 
     # ── Console / monitoring ───────────────────────────────────
-    @mcp.tool(annotations=READ_ONLY)
+    # Not READ_ONLY (audit, 2026-10-17): it issues a credential for a live
+    # root console, so the API wants a "Read, write & run commands" key and
+    # POST — annotated read-only, a client would let a model call it with
+    # no confirmation at all.
+    @mcp.tool(annotations=CONSOLE)
     def get_vps_console(vps_id: str) -> dict:
-        """Get a one-time console (VNC) connection URL and password for
-        this VPS — grants live console access, treat the returned
-        credentials as sensitive."""
-        return client.get(f"vps/{vps_id}/vnc/")
+        """Open a one-time console (VNC) session for this VPS and get its
+        connection URL (and a password, on some older locations). It
+        grants live console access to the server — treat the result as a
+        credential. Needs an API key (or connected app) with "Read, write
+        & run commands" access."""
+        return client.post(f"vps/{vps_id}/vnc/")
 
     @mcp.tool(annotations=READ_ONLY)
     def get_vps_stats(vps_id: str) -> dict:

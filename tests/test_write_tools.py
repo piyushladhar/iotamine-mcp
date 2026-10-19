@@ -81,10 +81,27 @@ async def test_destroy_vps_sends_delete_with_release_ids(mcp_server, fake_client
 ])
 @pytest.mark.asyncio
 async def test_power_actions_need_no_confirm_and_hit_the_right_endpoint(mcp_server, fake_client, tool_name, path):
-    fake_client.get.return_value = {"message": "ok"}
+    """POST, not GET: the API refuses a power action by GET from an API
+    key since 2026-10-17 (audit A6)."""
+    fake_client.post.return_value = {"message": "ok"}
     result = await mcp_server.call_tool(tool_name, {"vps_id": "v1"})
-    fake_client.get.assert_called_once_with(path)
+    fake_client.post.assert_called_once_with(path)
+    fake_client.get.assert_not_called()
     assert _texts(result) == [{"message": "ok"}]
+
+
+@pytest.mark.asyncio
+async def test_get_vps_console_posts_and_is_not_marked_read_only(mcp_server, fake_client):
+    """It opens a root console session, so it must not be annotated
+    read-only (a client would run it without asking) and must POST."""
+    fake_client.post.return_value = {"ws_url": "wss://example/console/tok", "password": None}
+    result = await mcp_server.call_tool("get_vps_console", {"vps_id": "v1"})
+    fake_client.post.assert_called_once_with("vps/v1/vnc/")
+    fake_client.get.assert_not_called()
+    assert _texts(result) == [{"ws_url": "wss://example/console/tok", "password": None}]
+    tool = {t.name: t for t in await mcp_server.list_tools()}["get_vps_console"]
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is True
 
 
 @pytest.mark.asyncio
