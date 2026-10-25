@@ -149,9 +149,18 @@ async def test_set_vps_reverse_dns_puts_to_the_ip_scoped_path(mcp_server, fake_c
 @pytest.mark.asyncio
 async def test_update_firewall_rules_posts_to_the_nested_route(mcp_server, fake_client):
     fake_client.post.return_value = {"status": "updated"}
-    rules = [{"port": 22, "protocol": "tcp", "action": "allow"}]
+    rules = [{"direction": "in", "ip_type": "ipv4", "decision": "accept", "protocol": "tcp", "src_port": "any", "dest_port": "22", "source": "0.0.0.0/0"}]
     await mcp_server.call_tool("update_firewall_rules", {"vps_id": "v1", "rules": rules, "confirm": True})
-    fake_client.post.assert_called_once_with("vps/v1/firewall_rules/updateRules/", json={"rules": rules})
+    # A bare list body — the backend 400s on {"rules": [...]}.
+    fake_client.post.assert_called_once_with("vps/v1/firewall_rules/updateRules/", json=rules)
+
+
+@pytest.mark.asyncio
+async def test_update_firewall_rules_sends_rules_version_as_a_query_param(mcp_server, fake_client):
+    fake_client.post.return_value = {"status": "updated"}
+    rules = [{"direction": "in", "ip_type": "ipv4", "decision": "accept", "protocol": "tcp", "src_port": "any", "dest_port": "443", "source": "0.0.0.0/0"}]
+    await mcp_server.call_tool("update_firewall_rules", {"vps_id": "v1", "rules": rules, "rules_version": "7", "confirm": True})
+    fake_client.post.assert_called_once_with("vps/v1/firewall_rules/updateRules/", json=rules, params={"rules_version": "7"})
 
 
 # ── Standalone IP addresses ─────────────────────────────────────────
@@ -362,3 +371,10 @@ async def test_get_bandwidth_overview_daily_passes_all_params_when_given(mcp_ser
         "vps/bandwidth_overview_daily/",
         params={"start": "2026-09-01", "end": "2026-09-17", "vps_id": "v1"},
     )
+
+
+@pytest.mark.asyncio
+async def test_list_firewall_rules_asks_for_the_version(mcp_server, fake_client):
+    fake_client.get.return_value = {"results": [], "rules_version": "abc"}
+    await mcp_server.call_tool("list_firewall_rules", {"vps_id": "v1"})
+    fake_client.get.assert_called_once_with("vps/v1/firewall_rules/", params={"with_version": "true"})

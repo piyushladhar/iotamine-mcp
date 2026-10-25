@@ -108,8 +108,8 @@ class IotamineClient:
     def get(self, path, params=None):
         return self._request("GET", path, params=params)
 
-    def post(self, path, json=None):
-        return self._request("POST", path, json=json)
+    def post(self, path, json=None, params=None):
+        return self._request("POST", path, params=params, json=json)
 
     def patch(self, path, json=None):
         return self._request("PATCH", path, json=json)

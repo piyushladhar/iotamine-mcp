@@ -179,7 +179,8 @@ def register(mcp, client):
         must already be stopped, same reason as change_vps_hostname
         (stop it first with stop_vps). Requires confirm=true. os_id: an
         id from list_vps_available_os for this specific VPS (not every
-        OS is available on every node)."""
+        OS is available on every node). Sets a root password, so it needs
+        a key with the "full" scope."""
         if not confirm:
             raise ToolError("Set confirm=true to reinstall this VPS — all data on its boot disk will be lost.")
         return client.post(f"vps/{vps_id}/rebuild/", json={"osid": os_id, "new_pass": new_pass, "conf_pass": new_pass})
@@ -240,7 +241,11 @@ def register(mcp, client):
     @mcp.tool(annotations=READ_ONLY)
     def get_vps_stats(vps_id: str) -> dict:
         """Real-time resource stats for a running VPS — CPU, RAM, disk,
-        and network usage right now."""
+        and network usage right now. used_cpu is a 0-100 percentage
+        across all vCPUs, measured from the host, so it includes some
+        virtualization overhead and can read a little higher than top
+        inside the server. ram/used_ram are MB; disk/used_disk/
+        bandwidth/used_bandwidth are GB; net_in/net_out are bits/sec."""
         return client.get(f"vps/{vps_id}/stats/")
 
     @mcp.tool(annotations=READ_ONLY)
@@ -417,17 +422,29 @@ def register(mcp, client):
 
     # ── Firewall ───────────────────────────────────────────────
     @mcp.tool(annotations=READ_ONLY)
-    def list_firewall_rules(vps_id: str) -> list:
-        """List the firewall rules currently applied to this VPS."""
-        return client.get_list(f"vps/{vps_id}/firewall_rules/")
+    def list_firewall_rules(vps_id: str) -> dict:
+        """List the firewall rules currently applied to this VPS:
+        {"results": [...rules], "rules_version": "..."}. Pass
+        rules_version to update_firewall_rules."""
+        return client.get(f"vps/{vps_id}/firewall_rules/", params={"with_version": "true"})
 
     @mcp.tool(annotations=WRITE)
-    def update_firewall_rules(vps_id: str, rules: list, confirm: bool = False) -> dict:
+    def update_firewall_rules(vps_id: str, rules: list, rules_version: str = None, confirm: bool = False) -> dict:
         """Replace this VPS's entire firewall rule set with the given
         list. Requires confirm=true — this can lock out access
         (including SSH) if the rules are wrong; double-check with the
         user before calling. Each rule should match the shape returned
-        by list_firewall_rules."""
+        by list_firewall_rules: {direction, ip_type, decision, protocol,
+        src_port, dest_port, source}. Pass the rules_version that
+        list_firewall_rules returned, so that if someone else changed
+        the rules in the meantime the update fails with a 409 instead
+        of overwriting their change."""
         if not confirm:
             raise ToolError("Set confirm=true to update firewall rules — a mistake here can lock out access to this VPS.")
-        return client.post(f"vps/{vps_id}/firewall_rules/updateRules/", json={"rules": rules})
+        # The backend takes the rule list itself as the request body (a
+        # bare JSON array, not {"rules": [...]}) and rejects anything
+        # else with 400 "Invalid format. Expected a list."
+        path = f"vps/{vps_id}/firewall_rules/updateRules/"
+        if rules_version:
+            return client.post(path, json=rules, params={"rules_version": rules_version})
+        return client.post(path, json=rules)

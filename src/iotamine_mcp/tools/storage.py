@@ -81,8 +81,8 @@ def register(mcp, client):
         whatever's on it entirely. Irreversible — requires confirm=true.
         The volume must be detached from any VPS first (detach_volume).
         A Windows OS requires root_password; anything else needs at
-        least one of ssh_public_key/root_password. Asynchronous — poll
-        get_volume_task_status."""
+        least one of ssh_public_key/root_password, so it needs a key
+        with the "full" scope. Asynchronous — poll get_volume_task_status."""
         if not confirm:
             raise ToolError("Set confirm=true to install an OS on this volume — everything on it will be overwritten.")
         payload = {"operating_system": operating_system}

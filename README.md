@@ -100,7 +100,7 @@ and its cost (if any) before it sets `confirm: true`.
 
 `run_command`, `get_command_result`, `cancel_command`, `list_commands`, `read_file` and
 `write_file` let an assistant work inside a VPS — install packages, edit configs, restart
-services, read logs — without SSH. Commands run as root through the server's qemu-guest-agent
+services, read logs — without SSH. Commands run as root through the server's iotamine-agent
 (installed on Iotamine images), with output and an exit code; a long command keeps running even
 if the tool call returns first, and `get_command_result` follows it.
 
@@ -118,13 +118,15 @@ server, commands up to 64 KB, files up to 1 MB, timeout up to 1 hour.
 
 ## Tools
 
-89 tools in total. Read-only ones work with either key scope; everything else needs a
-`read_write`-scoped key (still true for `create_ticket`/`reply_to_ticket`/`close_ticket`/
-`reopen_ticket` — any write needs that scope, full stop). The one difference: those four don't
-require `confirm=true` the way spend/destroy tools do — nothing about a ticket's lifecycle costs
-anything or destroys anything (closing one isn't even final — replying to it, or calling
-`reopen_ticket`, reopens it). `get_vps_console` and `change_vps_root_password` need a "Read,
-write & run commands" key; `get_vps_console` is marked destructive, so MCP clients ask first.
+89 tools in total. There are three key scopes: `read_only` ("Read-only", the default),
+`read_write` ("Read & write") and `full` ("Read, write & run commands"). Read-only tools work
+with any of them; everything else needs at least `read_write` (still true for `create_ticket`/
+`reply_to_ticket`/`close_ticket`/`reopen_ticket` — any write needs that scope, full stop). The
+one difference: those four don't require `confirm=true` the way spend/destroy tools do — nothing
+about a ticket's lifecycle costs anything or destroys anything (closing one isn't even final —
+replying to it, or calling `reopen_ticket`, reopens it). The command tools, `get_vps_console`,
+`change_vps_root_password` and `reinstall_vps` (a reinstall always sets a new root password) need a
+`full` key; `get_vps_console` is marked destructive, so MCP clients ask first.
 
 **VPS — lifecycle**
 `list_vps`, `get_vps`, `create_vps`, `destroy_vps`, `start_vps`, `stop_vps`, `poweroff_vps`,

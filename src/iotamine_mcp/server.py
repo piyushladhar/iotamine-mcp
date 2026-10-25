@@ -81,7 +81,7 @@ def build_http_server(base_url=None, resource_server_url=None, issuer_url=None):
     auth_settings = AuthSettings(
         issuer_url=issuer_url,
         resource_server_url=resource_server_url,
-        # Real scope enforcement (read_only vs read_write) happens on
+        # Real scope enforcement (read_only / read_write / full) happens on
         # every actual API call via core.authentications
         # .APIKeyAuthentication — this gate only asks "is the token
         # live at all", so it has no scopes of its own to require.

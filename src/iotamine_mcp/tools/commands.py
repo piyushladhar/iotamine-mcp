@@ -101,7 +101,7 @@ def register(mcp, client):
         timed_out, cancelled, or error (couldn't run, e.g. the server stopped).
         Needs command access switched on for the server and an API key/app with
         "Read, write & run commands" access; the error says which is missing.
-        Linux servers only, with qemu-guest-agent running (it is on Iotamine images)."""
+        Linux servers only, with iotamine-agent running (it is on Iotamine images)."""
         body = {"command": command, "timeout_seconds": timeout_seconds}
         if working_directory:
             body["working_directory"] = working_directory

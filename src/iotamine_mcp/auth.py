@@ -6,8 +6,8 @@ platform's separate iotamine_backend_django, oauth_server app) issues a
 real core.models.APIKey row as the OAuth access_token (see that app's
 TokenView), so verifying one is exactly the same check the backend
 already makes on every other authenticated API call: does a cheap,
-key-eligible GET succeed with it. Real scope enforcement (read_only vs
-read_write) deliberately stays where it already lives —
+key-eligible GET succeed with it. Real scope enforcement (read_only / read_write /
+full) deliberately stays where it already lives —
 core.authentications.APIKeyAuthentication, applied fresh to every
 actual tool call the token goes on to make via IotamineClient — this
 verifier only answers "is this a live, active credential at all", the
